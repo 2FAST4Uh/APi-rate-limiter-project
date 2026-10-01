@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ratelimiter.common.dto.ErrorResponse;
 import com.ratelimiter.common.util.HashUtil;
+import com.ratelimiter.gateway.cache.CachedClientRule;
 import com.ratelimiter.gateway.cache.ClientRuleCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,21 +24,24 @@ import java.time.Instant;
 public class ApiKeyAuthFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(ApiKeyAuthFilter.class);
-    private static final String API_KEY_HEADER = "X-API-Key";
-    private static final String CLIENT_ID_HEADER = "X-Client-Id";
+
+    /** Exchange attribute key shared with downstream filters (RateLimitFilter, QuotaFilter). */
+    public static final String CLIENT_RULE_ATTR = "clientRule";
+
+    private static final String API_KEY_HEADER   = "X-API-Key";
+    private static final String CLIENT_ID_HEADER  = "X-Client-Id";
 
     private final ClientRuleCache clientRuleCache;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper    objectMapper;
 
     public ApiKeyAuthFilter(ClientRuleCache clientRuleCache, ObjectMapper objectMapper) {
         this.clientRuleCache = clientRuleCache;
-        this.objectMapper = objectMapper;
+        this.objectMapper    = objectMapper;
     }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getPath().value();
-        if (!path.startsWith("/gateway/")) {
+        if (!exchange.getRequest().getPath().value().startsWith("/gateway/")) {
             return chain.filter(exchange);
         }
 
@@ -50,12 +54,15 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered {
 
         return clientRuleCache.getByKeyHash(keyHash)
                 .flatMap(rule -> {
+                    // Store rule so RateLimitFilter / QuotaFilter don't re-query
+                    exchange.getAttributes().put(CLIENT_RULE_ATTR, rule);
                     ServerWebExchange mutated = exchange.mutate()
                             .request(r -> r.header(CLIENT_ID_HEADER, String.valueOf(rule.getClientId())))
                             .build();
                     return chain.filter(mutated);
                 })
-                .switchIfEmpty(Mono.defer(() -> writeError(exchange, HttpStatus.UNAUTHORIZED, "Invalid, revoked, or expired API key")));
+                .switchIfEmpty(Mono.defer(() ->
+                        writeError(exchange, HttpStatus.UNAUTHORIZED, "Invalid, revoked, or expired API key")));
     }
 
     @Override
@@ -71,15 +78,13 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered {
                 .message(message)
                 .path(exchange.getRequest().getPath().value())
                 .build();
-
         byte[] bytes;
         try {
             bytes = objectMapper.writeValueAsBytes(body);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize error response", e);
+            log.error("Error serializing response", e);
             bytes = "{}".getBytes();
         }
-
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
