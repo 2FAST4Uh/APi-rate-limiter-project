@@ -1,0 +1,27 @@
+# Maven / IDE
+target/
+.mvn/
+*.class
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Node / Frontend
+node_modules/
+dist/
+.output/
+
+# OS / Environment
+.DS_Store
+Thumbs.db
+.env
+*.log
+
+# Temp / Scratch
+scratch/
+extracted_text.txt
+read_docx.py

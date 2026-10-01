@@ -1,0 +1,6 @@
+server:
+  port: ${SAMPLE_API_PORT:8082}
+
+spring:
+  application:
+    name: sample-api

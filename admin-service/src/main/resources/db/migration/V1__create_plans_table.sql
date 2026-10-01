@@ -1,0 +1,7 @@
+CREATE TABLE plans (
+    plan_id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    requests_per_minute INT NOT NULL,
+    daily_quota INT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
