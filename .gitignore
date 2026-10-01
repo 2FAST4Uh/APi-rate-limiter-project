@@ -25,3 +25,16 @@ Thumbs.db
 scratch/
 extracted_text.txt
 read_docx.py
+
+# Secrets and Sensitive Data
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.p12
+*.pfx
+secrets.yml
+application-secret.yml
+docker-compose.override.yml
+.vscode/
