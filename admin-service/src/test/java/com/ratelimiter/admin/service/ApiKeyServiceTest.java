@@ -2,7 +2,7 @@ package com.ratelimiter.admin.service;
 
 import com.ratelimiter.admin.dto.ApiKeyCreateResponse;
 
-import com.ratelimiter.admin.dto.ApiKeyResponse;
+
 import com.ratelimiter.admin.entity.ApiKey;
 import com.ratelimiter.admin.entity.Client;
 import com.ratelimiter.admin.repository.ApiKeyRepository;
@@ -17,7 +17,7 @@ import org.mockito.Mock;
 
 import org.mockito.MockitoAnnotations;
 
-import java.util.List;
+
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
