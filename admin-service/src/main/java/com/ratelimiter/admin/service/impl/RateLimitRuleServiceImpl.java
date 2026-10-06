@@ -4,6 +4,7 @@ import com.ratelimiter.admin.dto.ClientLimitsResponse;
 import com.ratelimiter.admin.dto.UpdateClientLimitsRequest;
 import com.ratelimiter.admin.entity.Client;
 import com.ratelimiter.admin.entity.RateLimitRule;
+import com.ratelimiter.admin.event.CacheInvalidationPublisher;
 import com.ratelimiter.admin.repository.ClientRepository;
 import com.ratelimiter.admin.repository.RateLimitRuleRepository;
 import com.ratelimiter.admin.service.RateLimitRuleService;
@@ -18,10 +19,14 @@ public class RateLimitRuleServiceImpl implements RateLimitRuleService {
 
     private final RateLimitRuleRepository rateLimitRuleRepository;
     private final ClientRepository clientRepository;
+    private final CacheInvalidationPublisher invalidationPublisher;
 
-    public RateLimitRuleServiceImpl(RateLimitRuleRepository rateLimitRuleRepository, ClientRepository clientRepository) {
+    public RateLimitRuleServiceImpl(RateLimitRuleRepository rateLimitRuleRepository,
+                                    ClientRepository clientRepository,
+                                    CacheInvalidationPublisher invalidationPublisher) {
         this.rateLimitRuleRepository = rateLimitRuleRepository;
         this.clientRepository = clientRepository;
+        this.invalidationPublisher = invalidationPublisher;
     }
 
     @Override
@@ -39,6 +44,8 @@ public class RateLimitRuleServiceImpl implements RateLimitRuleService {
         rule.setAlgorithm(request.getAlgorithm());
 
         RateLimitRule saved = rateLimitRuleRepository.save(rule);
+        // Evict the gateway cache for this client immediately
+        invalidationPublisher.publishClientInvalidation(clientId);
 
         return new ClientLimitsResponse(
                 clientId,

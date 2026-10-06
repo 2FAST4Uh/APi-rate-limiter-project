@@ -33,11 +33,13 @@ class ApiKeyServiceTest {
     private ClientRepository clientRepository;
 
     private ApiKeyService apiKeyService;
+    @org.mockito.Mock
+    private com.ratelimiter.admin.event.CacheInvalidationPublisher invalidationPublisher;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        apiKeyService = new ApiKeyServiceImpl(apiKeyRepository, clientRepository);
+        apiKeyService = new ApiKeyServiceImpl(apiKeyRepository, clientRepository, invalidationPublisher);
     }
 
     @Test

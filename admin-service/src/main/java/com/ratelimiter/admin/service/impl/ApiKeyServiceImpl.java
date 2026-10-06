@@ -4,6 +4,7 @@ import com.ratelimiter.admin.dto.ApiKeyCreateResponse;
 import com.ratelimiter.admin.dto.ApiKeyResponse;
 import com.ratelimiter.admin.entity.ApiKey;
 import com.ratelimiter.admin.entity.Client;
+import com.ratelimiter.admin.event.CacheInvalidationPublisher;
 import com.ratelimiter.admin.repository.ApiKeyRepository;
 import com.ratelimiter.admin.repository.ClientRepository;
 import com.ratelimiter.admin.service.ApiKeyService;
@@ -21,10 +22,14 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
     private final ClientRepository clientRepository;
+    private final CacheInvalidationPublisher invalidationPublisher;
 
-    public ApiKeyServiceImpl(ApiKeyRepository apiKeyRepository, ClientRepository clientRepository) {
+    public ApiKeyServiceImpl(ApiKeyRepository apiKeyRepository,
+                             ClientRepository clientRepository,
+                             CacheInvalidationPublisher invalidationPublisher) {
         this.apiKeyRepository = apiKeyRepository;
         this.clientRepository = clientRepository;
+        this.invalidationPublisher = invalidationPublisher;
     }
 
     @Override
@@ -58,8 +63,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         ApiKey oldKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found with id: " + keyId));
 
+        String oldHash = oldKey.getKeyHash();
         oldKey.setStatus(KeyStatus.REVOKED);
         apiKeyRepository.save(oldKey);
+        invalidationPublisher.publishKeyInvalidation(oldHash);
 
         return generateKey(oldKey.getClient().getId());
     }
@@ -69,8 +76,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API key not found with id: " + keyId));
 
+        String keyHash = apiKey.getKeyHash();
         apiKey.setStatus(KeyStatus.REVOKED);
         apiKeyRepository.save(apiKey);
+        invalidationPublisher.publishKeyInvalidation(keyHash);
     }
 
     @Override

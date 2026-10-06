@@ -50,6 +50,14 @@ public class ClientRuleCache {
         cache.remove(keyHash);
     }
 
+    /**
+     * Evict every cache entry belonging to a specific client.
+     * Used when a rate-limit rule is updated via the admin API.
+     */
+    public void evictByClientId(Long clientId) {
+        cache.entrySet().removeIf(e -> clientId.equals(e.getValue().rule().getClientId()));
+    }
+
     @Scheduled(fixedDelayString = "${gateway.cache.eviction-interval-ms:60000}")
     public void evictExpiredEntries() {
         int removed = 0;
